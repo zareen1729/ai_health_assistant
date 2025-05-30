@@ -1,62 +1,43 @@
-import openai
-import traceback
 import requests
-import base64
-import json
-from openai import AzureOpenAI
 from backend_config import *
 
-def get_callback_function_list():
-    return [  
-        {
-            "name": "search_hotels",
-            "description": "Retrieves hotels from the search index based on the parameters provided",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "location": {"type": "string", "description": "The location of the hotel (i.e. Seattle, WA)"},
-                    "max_price": {"type": "number", "description": "The maximum price for the hotel"},
-                    "features": {"type": "string", "description": "A comma separated list of features"}
-                },
-                "required": ["location"]
-            }
-        }
-    ]
-
-def openai_inference(prompt, model="gpt-4o"):
+def get_health_advice_from_ai(symptoms_description, model_name="gpt-4"):
+    """
+    Calls OpenAI to get health guidance based on user-provided symptoms.
+   
+    Args:
+        symptoms_description (str): The symptoms entered by the user.
+        model_name (str): OpenAI model to use (default is GPT-4).
+   
+    Returns:
+        str: Health assistant's guidance or error message.
+    """
+    print("🔍 Querying AI Health Assistant...")
+   
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json"
+    }
+   
+    prompt_text = f"You are an AI health assistant. Help a user understand their symptoms and suggest if they need to seek medical help. Keep it simple, clear, and non-alarming.\n\nSymptoms: {symptoms_description}"
+   
+    payload = {
+        "model": model_name,
+        "messages": [{"role": "user", "content": prompt_text}],
+        "temperature": 0.3
+    }
+   
     try:
-        # Get OAuth2 access token
-        payload = "grant_type=client_credentials"
-        credentials = base64.b64encode(f'{client_id}:{client_secret}'.encode('utf-8')).decode('utf-8')
-        headers = {
-            "Accept": "*/*",
-            "Content-Type": "application/x-www-form-urlencoded",
-            "Authorization": f"Basic {credentials}"
-        }
-
-        token_response = requests.post(url, headers=headers, data=payload)
-        token_response.raise_for_status()
-        access_token = token_response.json().get('access_token')
-
-        openai.api_key = access_token
-
-        client = AzureOpenAI(
-            azure_endpoint=azure_endpoint,
-            api_key=access_token,
-            api_version=api_version
-        )
-
-        messages = [{"role": "user", "content": prompt}]
-
-        response = client.chat.completions.create(
-            model=model,
-            messages=messages,
-            user=f'{{"appkey": "{app_key}"}}',
-            functions=get_callback_function_list(),
-            function_call="auto"
-        )
-
-        return response.choices[0].message
-
-    except Exception as e:
-        return {"error": str(e), "traceback": traceback.format_exc()}
+        response = requests.post(OPENAI_CHAT_COMPLETION_URL, headers=headers, json=payload)
+        response.raise_for_status()
+        response_json = response.json()
+       
+        ai_response = response_json['choices'][0]['message']['content']
+        print(f"✅ AI Health Assistant Response: {ai_response}")
+       
+        return ai_response
+   
+    except requests.exceptions.RequestException as e:
+        error_message = f"⚠️ Unable to fetch advice at the moment. Error: {str(e)}"
+        print(error_message)
+        return error_message
