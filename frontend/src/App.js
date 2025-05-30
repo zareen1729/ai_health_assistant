@@ -1,34 +1,33 @@
 import { useState, useEffect } from 'react';
 import FRONTEND_CONFIG from './frontend_config';
-import cideReviewLogo from './assets/cide-review.png';
+import healthLogo from './assets/healthcare.png'; // Replace with a relevant image
 
 function App() {
-  const [code, setCode] = useState('');
-  const [responses, setResponses] = useState({ codeReview: '', bom: '', license: '' });
+  const [healthInput, setHealthInput] = useState('');
+  const [response, setResponse] = useState('');
   const [history, setHistory] = useState([]);
-  const [selectedModel, setSelectedModel] = useState('Hackathon');
-  const [tasks, setTasks] = useState({ codeReview: true, bom: false, licenseCheck: false });
+  const [selectedModel, setSelectedModel] = useState('gpt-4o');
 
   useEffect(() => {
     if (!selectedModel) {
-      setSelectedModel('Hackathon');
+      setSelectedModel('gpt-4o');
     }
   }, [selectedModel]);
 
   const handleSubmit = async () => {
-    if (!code.trim()) return;
+    if (!healthInput.trim()) return;
 
-    setResponses({ codeReview: '', bom: '', license: '' });
+    const prompt = `A patient reports the following health details: ${healthInput}.
+    Based on this information, provide a preliminary analysis, suggest possible conditions,
+    and recommend whether they should see a specialist or take further action.`;
 
-    const modelToSend = selectedModel === 'Hackathon' ? 'openai' : selectedModel;
+    setHistory(prev => [...prev, { prompt }]);
 
     const requestPayload = {
-      code,
-      model: modelToSend,
-      tasks
+      code: prompt, // reusing 'code' as the backend expects it
+      model: selectedModel,
+      tasks: { codeReview: true } // you can rename this at backend if needed
     };
-
-    setHistory(prev => [...prev, { prompt: code }]);
 
     try {
       const res = await fetch(`${FRONTEND_CONFIG.BACKEND_URL}/api/chat`, {
@@ -38,17 +37,9 @@ function App() {
       });
 
       const data = await res.json();
-      if (data.response) {
-        setResponses({
-          codeReview: data.response.codeReview || '',
-          bom: data.response.bom || '',
-          license: data.response.license || ''
-        });
-      } else {
-        setResponses({ codeReview: '', bom: '', license: '' });
-      }
+      setResponse(data?.response?.codeReview || 'No response from model');
     } catch (err) {
-      setResponses({ codeReview: 'Server error', bom: '', license: '' });
+      setResponse('Server error while processing your request.');
     }
   };
 
@@ -60,57 +51,32 @@ function App() {
         maxWidth: '900px',
         border: '1px solid #ddd',
         borderRadius: '16px',
-        boxShadow: '0 6px 24px rgba(128, 90, 213, 0.2)',
-        background: '#f3e8ff',
+        boxShadow: '0 6px 24px rgba(0, 0, 0, 0.1)',
+        background: '#f0fdf4',
         fontFamily: 'Segoe UI, sans-serif'
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '1rem' }}>
-        <img src={cideReviewLogo} alt="Hackathon Logo" style={{ width: '50px', marginRight: '10px' }} />
-        <h2 style={{ color: '#4b0082' }}>Hackathon - Code Review</h2>
+        <img src={healthLogo} alt="Health Review Logo" style={{ width: '50px', marginRight: '10px' }} />
+        <h2 style={{ color: '#065f46' }}>AI Health Assistant</h2>
       </div>
 
       <textarea
         rows={10}
-        placeholder="Paste or type your code here..."
-        value={code}
-        onChange={(e) => setCode(e.target.value)}
+        placeholder="Describe your health condition (e.g. symptoms, age, gender, health history)..."
+        value={healthInput}
+        onChange={(e) => setHealthInput(e.target.value)}
         style={{
           width: '100%',
           fontFamily: 'monospace',
           fontSize: '14px',
           borderRadius: '10px',
-          boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.1)',
           border: '1px solid #aaa',
           padding: '12px',
           marginBottom: '1rem',
           backgroundColor: '#fff'
         }}
       />
-
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-        <label>
-          <input
-            type="checkbox"
-            checked={tasks.codeReview}
-            onChange={() => setTasks({ ...tasks, codeReview: !tasks.codeReview })}
-          /> Code Review
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={tasks.bom}
-            onChange={() => setTasks({ ...tasks, bom: !tasks.bom })}
-          /> Bill of Materials
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={tasks.licenseCheck}
-            onChange={() => setTasks({ ...tasks, licenseCheck: !tasks.licenseCheck })}
-          /> License Check
-        </label>
-      </div>
 
       <select
         value={selectedModel}
@@ -120,16 +86,14 @@ function App() {
           padding: '0.6rem',
           marginBottom: '1rem',
           borderRadius: '8px',
-          border: '1px solid #a78bfa',
-          backgroundColor: '#f5f3ff',
-          color: '#4b0082'
+          border: '1px solid #6ee7b7',
+          backgroundColor: '#ecfdf5',
+          color: '#065f46'
         }}
       >
-        <option value="Hackathon">Hackathon</option>
-        <option value="openai">OpenAI</option>
+        <option value="gpt-4o">OpenAI GPT-4o</option>
+        <option value="gpt-4">GPT-4</option>
         <option value="llama3">LLaMA 3</option>
-        <option value="llama2">LLaMA 2</option>
-        <option value="deepseek">DeepSeek</option>
       </select>
 
       <button
@@ -137,7 +101,7 @@ function App() {
         style={{
           width: '100%',
           padding: '0.75rem',
-          background: 'linear-gradient(to bottom, #b794f4, #805ad5)',
+          background: 'linear-gradient(to bottom, #6ee7b7, #34d399)',
           color: '#fff',
           border: 'none',
           borderRadius: '10px',
@@ -151,50 +115,17 @@ function App() {
         onMouseOver={(e) => (e.currentTarget.style.transform = 'translateY(-2px)')}
         onMouseOut={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
       >
-        🚀 Submit for Review
+        🩺 Submit Health Details
       </button>
 
-      {(tasks.codeReview || tasks.bom || tasks.licenseCheck) && (
+      {response && (
         <div style={{ marginTop: '2rem' }}>
-          <h3 style={{ borderBottom: '1px solid #aaa', paddingBottom: '0.5rem', color: '#4b0082' }}>Review Response:</h3>
-
-          {tasks.codeReview && (
-            <div style={{ background: '#ede9fe', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
-              <h4>🔍 Code Review</h4>
-              <div style={{ fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>
-                {responses.codeReview.split(/(?=Improved Code)/i).map((section, index) => {
-                  const isImproved = section.trim().toLowerCase().startsWith('improved code');
-                  return (
-                    <div
-                      key={index}
-                      style={{
-                        background: isImproved ? '#faf5ff' : 'transparent',
-                        padding: isImproved ? '0.5rem' : '0',
-                        borderRadius: isImproved ? '6px' : '0',
-                        marginBottom: isImproved ? '0.5rem' : '0'
-                      }}
-                    >
-                      {section}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {tasks.bom && (
-            <div style={{ background: '#fce7f3', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
-              <h4>📦 Bill of Materials</h4>
-              <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>{responses.bom}</pre>
-            </div>
-          )}
-
-          {tasks.licenseCheck && (
-            <div style={{ background: '#e9d5ff', padding: '1rem', borderRadius: '8px' }}>
-              <h4>📜 License Information</h4>
-              <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>{responses.license}</pre>
-            </div>
-          )}
+          <h3 style={{ borderBottom: '1px solid #aaa', paddingBottom: '0.5rem', color: '#065f46' }}>
+            AI Health Response:
+          </h3>
+          <div style={{ background: '#ecfdf5', padding: '1rem', borderRadius: '8px', fontFamily: 'monospace' }}>
+            <pre style={{ whiteSpace: 'pre-wrap' }}>{response}</pre>
+          </div>
         </div>
       )}
     </div>
@@ -202,3 +133,4 @@ function App() {
 }
 
 export default App;
+
